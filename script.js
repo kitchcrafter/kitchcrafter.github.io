@@ -395,12 +395,10 @@ async function processCheckout(e) {
     submitBtn.disabled = true;
     
     try {
-        // ╔══════════════════════════════════════════════════════════════════╗
-        // ║                    ¡¡¡PARTE A MODIFICAR!!!                       ║
-        // ║       REEMPLAZA LOS VALORES CON TUS DATOS REALES DE EMAILJS      ║
-        // ╚══════════════════════════════════════════════════════════════════╝
-        
-        // PARÁMETROS PARA EL EMAIL
+        // ╔══════════════════════════════════════════════════════════════╗
+        // ║                 PARÁMETROS CORREGIDOS                        ║
+        // ║          (incluyendo destinatario obligatorio)               ║
+        // ╚══════════════════════════════════════════════════════════════╝
         const templateParams = {
             order_id: formData.orderId,
             date: formData.date,
@@ -415,24 +413,26 @@ async function processCheckout(e) {
             shipping: formData.shipping,
             order_total: formData.total,
             customer_notes: formData.notes || 'Sin notas adicionales',
-            year: new Date().getFullYear()
+            year: new Date().getFullYear(),
+            
+            // ⭐⭐ ESTOS CAMPOS SON OBLIGATORIOS PARA EMAILJS ⭐⭐
+            to_email: 'ventas@kitch-crafter.com',    // ← REEMPLAZA CON TU EMAIL
+            to_name: 'KITCH-CRAFTER Ventas',         // ← REEMPLAZA CON TU NOMBRE
+            
+            // Campos adicionales útiles
+            reply_to: formData.email,                // Para responder al cliente
+            from_name: 'Sistema de Órdenes KITCH-CRAFTER'
         };
         
-        // 🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡
-        // 🟡        ¡¡¡CAMBIAR ESTOS DOS VALORES!!!         🟡
-        // 🟡  1. 'YOUR_SERVICE_ID' → Tu Service ID de EmailJS  🟡
-        // 🟡  2. 'YOUR_TEMPLATE_ID' → Tu Template ID de EmailJS 🟡
-        // 🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡
-        
+        // ╔══════════════════════════════════════════════════════════════╗
+        // ║                 DATOS DE EMAILJS                             ║
+        // ║       REEMPLAZA CON TUS DATOS REALES                        ║
+        // ╚══════════════════════════════════════════════════════════════╝
         const response = await emailjs.send(
-            'service_ikudrk5',      // ← REEMPLAZA CON TU SERVICE ID
-            'template_fmbvd15',     // ← REEMPLAZA CON TU TEMPLATE ID
+            'service_ikudrk5',      // ← Service ID de EmailJS
+            'template_fmbvd15',     // ← Template ID de EmailJS
             templateParams
         );
-        
-        // ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅
-        // ✅     ¡¡¡HASTA AQUÍ LA PARTE A MODIFICAR!!!      ✅
-        // ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅
         
         // Éxito
         showNotification('success', '✅ Orden enviada', `Recibimos tu orden #${formData.orderId}. Te contactaremos pronto.`);
@@ -446,12 +446,19 @@ async function processCheckout(e) {
         
         // Mostrar confirmación final
         setTimeout(() => {
-            alert(`¡Gracias por tu compra, ${formData.name}!\n\n📧 Recibirás un correo de confirmación en: ${formData.email}\n📞 Te contactaremos al: ${formData.phone}\n\nID de tu orden: ${formData.orderId}\nTotal: Q${formData.total}`);
+            alert(`¡Gracias por tu compra, ${formData.name}!\n\n📧 Recibimos tu orden y te contactaremos pronto.\n\nID de tu orden: ${formData.orderId}\nTotal: Q${formData.total}`);
         }, 500);
         
     } catch (error) {
         console.error('Error al enviar email:', error);
-        showNotification('error', '❌ Error', 'Hubo un problema al enviar tu orden. Por favor intenta nuevamente o contacta por WhatsApp.');
+        
+        // Mensaje de error más específico
+        let errorMsg = 'Hubo un problema al enviar tu orden. ';
+        if (error.text && error.text.includes('recipients address')) {
+            errorMsg = 'Error de configuración: falta el destinatario del email. Por favor contacta al soporte.';
+        }
+        
+        showNotification('error', '❌ Error', errorMsg);
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
     }
