@@ -359,16 +359,79 @@ function closeCheckoutModal() {
 async function processCheckout(e) {
     e.preventDefault();
     
-    // ... tu código existente de validación ...
+    // ⭐⭐ CORRECIÓN COMPLETA - AGREGAR TODO ESTO ⭐⭐
     
+    // 1. Obtener referencia al botón de submit
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    
+    // 2. Validar que hay productos en el carrito
+    if (cart.length === 0) {
+        showNotification('error', '❌ Carrito vacío', 'Agrega productos antes de continuar');
+        return;
+    }
+    
+    // 3. Obtener datos del formulario
+    const formData = {
+        name: document.getElementById('customerName').value.trim(),
+        email: document.getElementById('customerEmail').value.trim(),
+        phone: document.getElementById('customerPhone').value.trim(),
+        address: document.getElementById('customerAddress').value.trim(),
+        city: document.getElementById('customerCity').value,
+        paymentMethod: document.querySelector('input[name="paymentMethod"]:checked')?.value,
+        notes: document.getElementById('customerNotes').value.trim(),
+        
+        // Generar ID de orden única
+        orderId: 'KC-' + Date.now().toString().slice(-8),
+        date: new Date().toLocaleDateString('es-GT', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        }),
+        
+        // Datos del carrito
+        items: generateOrderItemsHTML(),
+        subtotal: calculateSubtotal().toFixed(2),
+        shipping: calculateShipping().toFixed(2),
+        total: calculateTotal().toFixed(2)
+    };
+    
+    // 4. Validar campos requeridos
+    const requiredFields = [
+        { field: formData.name, name: 'Nombre completo' },
+        { field: formData.email, name: 'Email' },
+        { field: formData.phone, name: 'Teléfono' },
+        { field: formData.address, name: 'Dirección' },
+        { field: formData.city, name: 'Ciudad/Departamento' },
+        { field: formData.paymentMethod, name: 'Método de pago' }
+    ];
+    
+    for (const req of requiredFields) {
+        if (!req.field) {
+            showNotification('error', '❌ Campo requerido', `"${req.name}" es obligatorio`);
+            return;
+        }
+    }
+    
+    // 5. Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+        showNotification('error', '❌ Email inválido', 'Por favor ingresa un email válido');
+        return;
+    }
+    
+    // 6. Mostrar estado de envío
+    submitBtn.textContent = '📤 Enviando orden...';
+    submitBtn.disabled = true;
+    
+    // 7. TRY-CATCH (tu código existente sigue aquí)
     try {
         console.log("📧 Configurando email para Outlook...");
         
-        // ╔══════════════════════════════════════════════════════════════╗
-        // ║            CONFIGURACIÓN ESPECÍFICA PARA OUTLOOK             ║
-        // ╚══════════════════════════════════════════════════════════════╝
+        // Tu código de templateParams...
         const templateParams = {
-            // Datos esenciales de la orden
             order_id: formData.orderId,
             date: formData.date,
             customer_name: formData.name,
@@ -384,62 +447,50 @@ async function processCheckout(e) {
             customer_notes: formData.notes || 'Sin notas adicionales',
             year: new Date().getFullYear(),
             
-            // ⭐⭐ CONFIGURACIÓN OUTLOOK ⭐⭐
-            to_email: 'kitchcrafter.gt@outlook.com',      // ← Asegúrate que sea Outlook
+            // Configuración Outlook
+            to_email: 'kitchcrafter.gt@outlook.com',
             to_name: 'KITCH-CRAFTER Ventas',
-            
-            // Outlook necesita "reply_to" explícito
             reply_to: formData.email,
-            
-            // Remitente claro (Outlook es estricto con esto)
             from_name: 'KITCH-CRAFTER Press&Maiz',
-            from_email: 'kitchcrafter.gt@outlook.com', // ← Mismo que el conectado
-            
-            // Metadatos para mejor delivery
+            from_email: 'kitchcrafter.gt@outlook.com',
             subject: `Nueva Orden KITCH-CRAFTER: ${formData.orderId}`,
-            
-            // Headers adicionales para Outlook
             headers: {
-                'X-Priority': '1',  // Alta prioridad
+                'X-Priority': '1',
                 'X-Mailer': 'KITCH-CRAFTER Web System'
             }
         };
         
         console.log("📤 Enviando via Outlook...");
-        console.log("Destinatario:", templateParams.to_email);
-        console.log("Remitente:", templateParams.from_email);
         
         const response = await emailjs.send(
-            'service_ikudrk5',      // ← Service ID específico de Outlook
+            'service_ikudrk5',
             'template_fmbvd15',
             templateParams
         );
         
-        console.log("✅ Outlook response:", {
-            status: response.status,
-            text: response.text,
-            service: 'Outlook'
-        });
+        console.log("✅ Outlook response:", response);
         
-        // ... resto de tu código de éxito ...
+        // 8. ÉXITO - Limpiar carrito y mostrar confirmación
+        showNotification('success', '✅ Orden enviada', 
+            `Tu orden ${formData.orderId} fue enviada. Te contactaremos pronto.`);
+        
+        // Limpiar carrito
+        clearCart();
+        
+        // Cerrar modales
+        closeCheckoutModal();
+        closeCartModal();
         
     } catch (error) {
-        console.error("❌ Error Outlook:", {
-            status: error.status,
-            text: error.text,
-            service: 'Outlook'
-        });
+        console.error("❌ Error Outlook:", error);
         
-        let errorMsg = 'Error al enviar email. ';
+        let errorMsg = 'Error al enviar email. Intenta de nuevo o contacta por WhatsApp.';
         
-        // Errores específicos de Outlook
         if (error.text) {
             if (error.text.includes('550') || error.text.includes('5.7.1')) {
-                errorMsg = 'Outlook bloqueó el envío. Verifica permisos de la cuenta.';
-            } else if (error.text.includes('quota') || error.text.includes('limit')) {
-                errorMsg = 'Límite de envíos de Outlook alcanzado. Intenta mañana.';
-            } else if (error.text.includes('authentication')) {
-                errorMsg = 'Error de autenticación con Outlook. Re-conecta en EmailJS.';
+                errorMsg = 'Outlook bloqueó el envío. Contacta por WhatsApp al +502 1234 5678';
+            } else if (error.text.includes('quota')) {
+                errorMsg = 'Límite de envíos alcanzado. Contacta por WhatsApp.';
             }
         }
         
