@@ -359,158 +359,91 @@ function closeCheckoutModal() {
 async function processCheckout(e) {
     e.preventDefault();
     
-    console.log('🔄 Iniciando proceso de checkout...');
-    
-    // Validar que haya productos
-    if (cart.length === 0) {
-        showNotification('error', 'Carrito vacío', 'Agrega productos antes de finalizar la compra');
-        return;
-    }
-    
-    // Recoger datos del formulario
-    const customerName = document.getElementById('customerName');
-    const customerEmail = document.getElementById('customerEmail');
-    const customerPhone = document.getElementById('customerPhone');
-    const customerAddress = document.getElementById('customerAddress');
-    const customerCity = document.getElementById('customerCity');
-    const customerNotes = document.getElementById('customerNotes');
-    
-    // Verificar que los elementos existan
-    if (!customerName || !customerEmail || !customerPhone || !customerAddress || !customerCity) {
-        showNotification('error', 'Error de formulario', 'No se pudo cargar el formulario. Recarga la página.');
-        return;
-    }
-    
-    const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
-    if (!paymentMethod) {
-        showNotification('error', 'Método de pago', 'Selecciona un método de pago');
-        return;
-    }
-    
-    const formData = {
-        name: customerName.value.trim(),
-        email: customerEmail.value.trim(),
-        phone: customerPhone.value.trim(),
-        address: customerAddress.value.trim(),
-        city: customerCity.value,
-        paymentMethod: paymentMethod.value,
-        notes: customerNotes ? customerNotes.value.trim() : '',
-        orderId: 'KC-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
-        date: new Date().toLocaleDateString('es-GT', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }),
-        subtotal: calculateSubtotal().toFixed(2),
-        shipping: calculateShipping().toFixed(2),
-        total: calculateTotal().toFixed(2),
-        items: generateOrderItemsHTML()
-    };
-    
-    // Validación básica
-    if (!formData.name || !formData.email || !formData.phone || !formData.address || !formData.city) {
-        showNotification('error', 'Datos incompletos', 'Por favor completa todos los campos requeridos (*)');
-        return;
-    }
-    
-    // Mostrar carga
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = '⏳ Enviando...';
-    submitBtn.disabled = true;
+    // ... tu código existente de validación ...
     
     try {
-        console.log('📧 Preparando email con datos:', formData);
+        console.log("📧 Configurando email para Outlook...");
         
         // ╔══════════════════════════════════════════════════════════════╗
-        // ║                 PARÁMETROS CORREGIDOS                        ║
+        // ║            CONFIGURACIÓN ESPECÍFICA PARA OUTLOOK             ║
         // ╚══════════════════════════════════════════════════════════════╝
         const templateParams = {
-            // Datos de la orden
+            // Datos esenciales de la orden
             order_id: formData.orderId,
             date: formData.date,
-            subtotal: formData.subtotal,
-            shipping: formData.shipping,
-            order_total: formData.total,
-            order_items: formData.items,
-            
-            // Datos del cliente
             customer_name: formData.name,
             customer_email: formData.email,
             customer_phone: formData.phone,
             customer_address: formData.address,
             customer_city: formData.city,
             payment_method: formData.paymentMethod,
+            order_items: formData.items,
+            subtotal: formData.subtotal,
+            shipping: formData.shipping,
+            order_total: formData.total,
             customer_notes: formData.notes || 'Sin notas adicionales',
             year: new Date().getFullYear(),
             
-            // ⭐⭐ DESTINATARIO FIJO OBLIGATORIO ⭐⭐
-            // EmailJS necesita SABER a quién enviar
-            // ESTOS CAMPOS DEBEN COINCIDIR CON TU PLANTILLA EN EMAILJS
-            to_email: 'TU_EMAIL_AQUI@gmail.com',  // ⬅️⬅️⬅️ REEMPLAZA CON TU EMAIL
+            // ⭐⭐ CONFIGURACIÓN OUTLOOK ⭐⭐
+            to_email: 'kitchcrafter.gt@outlook.com',      // ← Asegúrate que sea Outlook
             to_name: 'KITCH-CRAFTER Ventas',
             
-            // Para poder responder al cliente
+            // Outlook necesita "reply_to" explícito
             reply_to: formData.email,
-            from_name: 'Sistema de Órdenes KITCH-CRAFTER'
+            
+            // Remitente claro (Outlook es estricto con esto)
+            from_name: 'KITCH-CRAFTER Press&Maiz',
+            from_email: 'kitchcrafter.gt@outlook.com', // ← Mismo que el conectado
+            
+            // Metadatos para mejor delivery
+            subject: `Nueva Orden KITCH-CRAFTER: ${formData.orderId}`,
+            
+            // Headers adicionales para Outlook
+            headers: {
+                'X-Priority': '1',  // Alta prioridad
+                'X-Mailer': 'KITCH-CRAFTER Web System'
+            }
         };
         
-        console.log('📤 Enviando email con parámetros:', templateParams);
+        console.log("📤 Enviando via Outlook...");
+        console.log("Destinatario:", templateParams.to_email);
+        console.log("Remitente:", templateParams.from_email);
         
-        // ╔══════════════════════════════════════════════════════════════╗
-        // ║                 CONFIGURACIÓN EMAILJS                        ║
-        // ╚══════════════════════════════════════════════════════════════╝
         const response = await emailjs.send(
-            'service_ikudrk5',      // ⬅️⬅️⬅️ Service ID de EmailJS
-            'template_fmbvd15',     // ⬅️⬅️⬅️ Template ID de EmailJS
+            'service_ikudrk5',      // ← Service ID específico de Outlook
+            'template_fmbvd15',
             templateParams
         );
         
-        console.log('✅ Email enviado exitosamente:', response);
-        
-        // ⭐⭐ IMPORTANTE: NO limpiar el carrito hasta confirmar éxito ⭐⭐
-        showNotification('success', '✅ Orden enviada', `Recibimos tu orden #${formData.orderId}`);
-        
-        // Cerrar modales primero
-        closeCheckoutModal();
-        closeCartModal();
-        
-        // Luego limpiar el carrito (después de cerrar modales)
-        setTimeout(() => {
-            clearCart();
-        }, 500);
-        
-        // Mostrar confirmación final
-        setTimeout(() => {
-            alert(`¡Gracias por tu compra, ${formData.name}!\n\n📧 Te contactaremos pronto al:\nEmail: ${formData.email}\nTeléfono: ${formData.phone}\n\nID de orden: ${formData.orderId}\nTotal: Q${formData.total}`);
-        }, 1000);
-        
-    } catch (error) {
-        console.error('❌ ERROR COMPLETO:', {
-            status: error.status,
-            text: error.text,
-            message: error.message
+        console.log("✅ Outlook response:", {
+            status: response.status,
+            text: response.text,
+            service: 'Outlook'
         });
         
-        let errorMessage = 'Hubo un problema al enviar tu orden. ';
+        // ... resto de tu código de éxito ...
         
-        // Mensajes específicos según el error
+    } catch (error) {
+        console.error("❌ Error Outlook:", {
+            status: error.status,
+            text: error.text,
+            service: 'Outlook'
+        });
+        
+        let errorMsg = 'Error al enviar email. ';
+        
+        // Errores específicos de Outlook
         if (error.text) {
-            if (error.text.includes('recipients address')) {
-                errorMessage = 'Error de configuración: Por favor configura el destinatario en EmailJS Dashboard.';
-            } else if (error.text.includes('Invalid template')) {
-                errorMessage = 'Error: Template ID incorrecto. Verifica en EmailJS.';
-            } else if (error.text.includes('Service not found')) {
-                errorMessage = 'Error: Service ID incorrecto. Verifica en EmailJS.';
-            } else {
-                errorMessage += `Error: ${error.text}`;
+            if (error.text.includes('550') || error.text.includes('5.7.1')) {
+                errorMsg = 'Outlook bloqueó el envío. Verifica permisos de la cuenta.';
+            } else if (error.text.includes('quota') || error.text.includes('limit')) {
+                errorMsg = 'Límite de envíos de Outlook alcanzado. Intenta mañana.';
+            } else if (error.text.includes('authentication')) {
+                errorMsg = 'Error de autenticación con Outlook. Re-conecta en EmailJS.';
             }
         }
         
-        showNotification('error', '❌ Error', errorMessage);
+        showNotification('error', '❌ Error Outlook', errorMsg);
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
     }
