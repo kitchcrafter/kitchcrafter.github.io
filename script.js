@@ -443,6 +443,7 @@ async function processCheckout(e) {
         
         // Tu código de templateParams...
         const templateParams = {
+            // Variables básicas (estas funcionan)
             order_id: formData.orderId,
             date: formData.date,
             customer_name: formData.name,
@@ -451,24 +452,27 @@ async function processCheckout(e) {
             customer_address: formData.address,
             customer_city: formData.city,
             payment_method: formData.paymentMethod,
-            order_items: formData.items,
+    
+            // ⭐⭐ CAMBIA ESTO: Envía texto simple en lugar de HTML complejo ⭐⭐
+            order_items_simple: cart.map(item => 
+                `• ${item.name} x${item.quantity} = Q${(item.price * item.quantity).toFixed(2)}`
+            ).join('<br>'),
+    
             subtotal: formData.subtotal,
             shipping: formData.shipping,
             order_total: formData.total,
-            customer_notes: formData.notes || 'Sin notas adicionales',
-            year: new Date().getFullYear(),
-            
+            customer_notes: formData.notes || 'Sin notas',
+    
             // Configuración Outlook
             to_email: 'kitchcrafter.gt@outlook.com',
             to_name: 'KITCH-CRAFTER Ventas',
             reply_to: formData.email,
             from_name: 'KITCH-CRAFTER Press&Maiz',
             from_email: 'kitchcrafter.gt@outlook.com',
-            subject: `Nueva Orden KITCH-CRAFTER: ${formData.orderId}`,
-            headers: {
-                'X-Priority': '1',
-                'X-Mailer': 'KITCH-CRAFTER Web System'
-            }
+            subject: `Nueva Orden: ${formData.orderId}`,
+    
+            // ⭐⭐ PRUEBA SIN HEADERS COMPLEJOS ⭐⭐
+            // headers: { ... }  // Comenta esto temporalmente
         };
         
         console.log("📤 Enviando via Outlook...");
